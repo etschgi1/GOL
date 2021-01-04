@@ -15,11 +15,24 @@ class CustomButton(object):
         self.neighbors = neighbors
         self.Gameboard = Gameboard
         # setup button
-        self.button = Button(self.Gameboard.root, width=10, height=5, bg="white", text="row: "+str(row) +
-                             "col: "+str(col), command=self.Buttonclicked).grid(row=row, column=col)
+        self.button = Button(self.Gameboard.root, width=10, height=5, bg="black",
+                             command=self.Buttonclicked,)
+        self.button.grid(row=row, column=col)
+
+    def ChangeButtonColor(self):
+        if(self.state == 0):
+            self.button.config(bg="white")
+        else:
+            self.button["bg"] = "black"
 
     def Buttonclicked(self):
-        self.button.configure(bg="blue")
+        if self.state == 1:
+            self.ChangeButtonColor()
+            self.state = 0
+        else:
+            self.ChangeButtonColor()
+            self.state = 1
+        print("state: {}".format(self.state))
 
 
 class Gameboard(object):
