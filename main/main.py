@@ -1,6 +1,7 @@
 
 """Game of Life Implementation"""
 
+import random as rnd
 import sys
 import os
 from tkinter import *
@@ -15,10 +16,10 @@ DEAD_FROM_LONELINESS = 1
 # count at which (or higher) cells die of overpopulation
 DEAD_FROM_OVERPOPULATION = 4
 
-TIME_BETWEEN_STEPS = 0
+TIME_BETWEEN_STEPS = 0.05
 
-GAME_HEIGHT = 50  # sets number of cells in column
-GAME_WIDTH = 50  # sets number of cells in a row
+GAME_HEIGHT = 30  # sets number of cells in column
+GAME_WIDTH = 30  # sets number of cells in a row
 
 
 class CustomButton(object):
@@ -71,7 +72,10 @@ class Gameboard(object):
     def __init__(self, height, width):
         self.root = Tk()
         self.frameheight = height*17+50
-        self.framewidth = width*17
+        if(width > 7):
+            self.framewidth = width*17
+        else:
+            self.framewidth = 150
         self.root.geometry("%dx%d" %
                            (self.framewidth, self.frameheight))  # geometry setup
         self.root.title("Game Of Live")
@@ -91,13 +95,22 @@ class Gameboard(object):
         self.buttons = []
         self.pixel = PhotoImage(width=1, height=1)
         self.run = Button(master=self.FrameTopNavigation, image=self.pixel, compound="c",
-                          width=self.framewidth/2, height=50, bg="#96ed6b", command=self.runSim,
-                          text="run", activebackground="green")
+                          width=self.framewidth/5, height=50, bg="#96ed6b", command=self.runSim,
+                          text="run/stop", activebackground="green")
         self.restart = Button(master=self.FrameTopNavigation, image=self.pixel, compound="c",
-                              width=self.framewidth/2, height=50, bg="#ff8400", command=self.restart,
+                              width=self.framewidth/5, height=50, bg="#ff8400", command=self.restart,
                               text="restart", activebackground="red")
+        self.propslider = Scale(
+            master=self.FrameTopNavigation, from_=0, to=100, orient=HORIZONTAL)
+        self.timeslide = Scale(
+            master=self.FrameTopNavigation, from_=0.01, to=1, resolution=0.01, orient=HORIZONTAL)
+        self.proppopulate = Button(master=self.FrameTopNavigation, image=self.pixel, compound="c",
+                                   width=self.framewidth/5, height=50, bg="brown", text="<<Prop-Populate", command=self.populateRandom)
         self.run.grid(row=0, column=0)
         self.restart.grid(row=0, column=1)
+        self.propslider.grid(row=0, column=2)
+        self.timeslide.grid(row=0, column=4)
+        self.proppopulate.grid(row=0, column=3)
 
     def buildGrid(self):
         for i in range(self.height):
@@ -109,19 +122,35 @@ class Gameboard(object):
     def restart(self):
         print("Restarting...")
         python = sys.executable
-        os.execl(python, python, * sys.argv)
+        os.execl(python, python, *sys.argv)
+
+    def populateRandom(self):
+        for row in range(self.height):
+            for col in range(self.width):
+                if self.buttons[row][col].state == 1:
+                    self.buttons[row][col].Buttonclicked()
+        prop = self.propslider.get()/100
+        if prop == 0:
+            return
+        for row in range(self.height):
+            for col in range(self.width):
+                # randnumber
+                if rnd.random() < prop:
+                    self.buttons[row][col].Buttonclicked()
 
     def runSim(self):
-        self.run.config(state=DISABLED)
         if not self.simrun:
             self.simrun = TRUE
             print("run sim")
             t1 = threading.Thread(target=dirtySim, args=(self,
                                                          self.height, self.width), daemon=TRUE).start()
+        else:
+            print("Sim stopped")
+            self.simrun = FALSE
 
 
 def dirtySim(Gb, height, width):
-    while TRUE:
+    while Gb.simrun:
         cellcount = height*width
         for cellrow in range(height):  # check if cell should live or die
             for cellcol in range(width):
@@ -129,6 +158,9 @@ def dirtySim(Gb, height, width):
                     Gb, Gb.buttons[cellrow][cellcol], cellrow, cellcol)
         makeStep(Gb)
         resetallneighborcounts(Gb)
+        delay = Gb.timeslide.get()
+        if delay > 0:
+            TIME_BETWEEN_STEPS = delay
         time.sleep(TIME_BETWEEN_STEPS)
 
 
