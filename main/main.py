@@ -18,8 +18,8 @@ DEAD_FROM_OVERPOPULATION = 4
 
 TIME_BETWEEN_STEPS = 0.05
 
-GAME_HEIGHT = 30  # sets number of cells in column
-GAME_WIDTH = 30  # sets number of cells in a row
+GAME_HEIGHT = 50  # sets number of cells in column
+GAME_WIDTH = 70  # sets number of cells in a row
 
 
 class CustomButton(object):
@@ -90,6 +90,7 @@ class Gameboard(object):
                              height=self.frameheight-50)
 
         self.simrun = FALSE
+        self.roundcount = 0
         self.height = height
         self.width = width
         self.buttons = []
@@ -98,7 +99,7 @@ class Gameboard(object):
                           width=self.framewidth/5, height=50, bg="#96ed6b", command=self.runSim,
                           text="run/stop", activebackground="green")
         self.restart = Button(master=self.FrameTopNavigation, image=self.pixel, compound="c",
-                              width=self.framewidth/5, height=50, bg="#ff8400", command=self.restart,
+                              width=self.framewidth/5, height=25, bg="#ff8400", command=self.restart,
                               text="restart", activebackground="red")
         self.propslider = Scale(
             master=self.FrameTopNavigation, from_=0, to=100, orient=HORIZONTAL)
@@ -106,11 +107,14 @@ class Gameboard(object):
             master=self.FrameTopNavigation, from_=0.01, to=1, resolution=0.01, orient=HORIZONTAL)
         self.proppopulate = Button(master=self.FrameTopNavigation, image=self.pixel, compound="c",
                                    width=self.framewidth/5, height=50, bg="brown", text="<<Prop-Populate", command=self.populateRandom)
+        self.roundcountlabel = Label(
+            master=self.FrameTopNavigation, text="rounds: "+str(self.roundcount))
         self.run.grid(row=0, column=0)
-        self.restart.grid(row=0, column=1)
+        #self.restart.grid(row=0, column=1)
         self.propslider.grid(row=0, column=2)
         self.timeslide.grid(row=0, column=4)
         self.proppopulate.grid(row=0, column=3)
+        self.roundcountlabel.grid(row=0, column=1)
 
     def buildGrid(self):
         for i in range(self.height):
@@ -124,28 +128,29 @@ class Gameboard(object):
         python = sys.executable
         os.execl(python, python, *sys.argv)
 
+    def updateroundcount(self):
+        self.roundcountlabel.config(text="rounds: "+str(self.roundcount))
+
     def populateRandom(self):
+        prop = self.propslider.get()/100
         for row in range(self.height):
             for col in range(self.width):
                 if self.buttons[row][col].state == 1:
                     self.buttons[row][col].Buttonclicked()
-        prop = self.propslider.get()/100
-        if prop == 0:
-            return
-        for row in range(self.height):
-            for col in range(self.width):
-                # randnumber
                 if rnd.random() < prop:
                     self.buttons[row][col].Buttonclicked()
 
     def runSim(self):
         if not self.simrun:
+            self.roundcount = 0
             self.simrun = TRUE
+            self.run.config(bg="green")
             print("run sim")
             t1 = threading.Thread(target=dirtySim, args=(self,
                                                          self.height, self.width), daemon=TRUE).start()
         else:
             print("Sim stopped")
+            self.run.config(bg="#96ed6b")
             self.simrun = FALSE
 
 
@@ -157,6 +162,8 @@ def dirtySim(Gb, height, width):
                 countNeighbors(
                     Gb, Gb.buttons[cellrow][cellcol], cellrow, cellcol)
         makeStep(Gb)
+        Gb.roundcount += 1
+        Gb.updateroundcount()
         resetallneighborcounts(Gb)
         delay = Gb.timeslide.get()
         if delay > 0:
