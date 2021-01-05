@@ -2,6 +2,12 @@ from tkinter import *
 import time
 
 
+REBIRTH_COUNT = 3
+DEAD_FROM_LONELINESS = 1
+DEAD_FROM_OVERPOPULATION = 4
+TIME_BETWEEN_STEPS = 1
+
+
 class CustomButton(object):
     """
     int row,col Coordinates
@@ -21,6 +27,12 @@ class CustomButton(object):
                              bg="black",
                              command=self.Buttonclicked)
         self.button.grid(row=row, column=col)
+
+    def beBorn(self):
+        self.Buttonclicked()
+
+    def die(self):
+        self.Buttonclicked()
 
     def ChangeButtonColor(self):
         if(self.state == 0):
@@ -62,14 +74,18 @@ class Gameboard(object):
 
     def buildGrid(self):
         for i in range(self.height):
+            row = []
             for j in range(self.width):
-                # +1 row for other buttons up top
-                self.buttons.append(CustomButton(i, j, 0, 0, self))
+                row.append(CustomButton(i, j, 0, 0, self))
+            self.buttons.append(row)
 
     def runSim(self):
         self.run.config(state=DISABLED)  # deactivate start
         print("run sim")
+        i = 0
+        time.sleep(TIME_BETWEEN_STEPS)
         dirtySim(self, self.height, self.width)
+        i += 1
 
         # todo kill all buttons start new
         self.run.config(state=ACTIVE)
@@ -79,26 +95,64 @@ def dirtySim(Gb, height, width):
     cellcount = height*width
     for cellrow in range(height):  # check if cell should live or die
         for cellcol in range(width):
-            countNeighbors(Gb, Gb.buttons[cellrow*width+cellcol])
+            countNeighbors(Gb, Gb.buttons[cellrow][cellcol], cellrow, cellcol)
+    makeStep(Gb)
+    resetallneighborcounts(Gb)
 
 
-def countNeighbors(Gb, Cell):
-    Cellindex = Cell.index
-    for rowrelative in range(-1, 2):  # iterate over neighbors
-        for colrelative in range(-1, 2):
-            if(rowrelative == colrelative and colrelative == 0):  # dont count oneself
-                continue
-            try:
-                # count alive neighbors
-                if(Gb.buttons[Cellindex+colrelative+(rowrelative*Gb.width)].state == 1):
-                    Gb.buttons[Cellindex].neighbors += 1
-            except:
-                continue
+def makeStep(Gb):
+    for row in range(Gb.height):
+        for col in range(Gb.width):
+            # apply rules
+            Cell = Gb.buttons[row][col]
+            if(Cell.state == 0 and Cell.neighbors == REBIRTH_COUNT):  # resurect from the dead
+                Cell.beBorn()
+                print("born")
+            elif(Cell.state == 1 and Cell.neighbors <= DEAD_FROM_LONELINESS):
+                print("lonly")
+                Cell.die()
+            elif(Cell.state == 1 and Cell.neighbors >= DEAD_FROM_OVERPOPULATION):
+                print("overpop")
+                Cell.die()
 
-    print("Cell: r: {} c: {} state: {}, Neighbors {}".format(Cell.row, Cell.col,
-                                                             "LIFE" if Cell.state == 1 else "XXXX", Cell.neighbors))
+
+def resetallneighborcounts(Gb):
+    for row in range(Gb.height):
+        for col in range(Gb.width):
+            Gb.buttons[row][col].neighbors = 0
 
 
-board = Gameboard(3, 3)
-board.buildGrid()
-board.root.mainloop()
+def countNeighbors(Gb, Cell, row, col):
+    ownstate = Cell.state
+    Cells = Gb.buttons
+    if(ownstate == 1):  # add to neighbors +1
+        for rowrel in range(-1, 2):
+            for colrel in range(-1, 2):
+                try:
+                    rowneighbor = row+rowrel
+                    colneighbor = col+colrel
+                    if(rowneighbor == row and colneighbor == col):
+                        continue
+                    if(rowneighbor < 0 or colneighbor < 0):
+                        continue
+                    Cells[rowneighbor][colneighbor].neighbors += 1
+                except:
+                    continue
+
+
+def printoutcell(Gb):
+    for row in range(Gb.width):
+        for col in range(Gb.height):
+            Cell = Gb.buttons[row][col]
+            print("Cell: r: {} c: {} state: {}, Neighbors {}".format(Cell.row, Cell.col,
+                                                                     "LIFE" if Cell.state == 1 else "XXXX", Cell.neighbors))
+
+
+def main():
+    board = Gameboard(6, 6)
+    board.buildGrid()
+    board.root.mainloop()
+
+
+if __name__ == '__main__':
+    main()
