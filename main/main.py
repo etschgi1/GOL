@@ -1,11 +1,24 @@
+
+"""Game of Life Implementation"""
+
+import sys
+import os
 from tkinter import *
 import time
+import threading
 
 
+# count for neighbors at which birth occurres
 REBIRTH_COUNT = 3
+# count at which (or lower) cells die out of lonliness
 DEAD_FROM_LONELINESS = 1
+# count at which (or higher) cells die of overpopulation
 DEAD_FROM_OVERPOPULATION = 4
-TIME_BETWEEN_STEPS = 1
+
+TIME_BETWEEN_STEPS = 0
+
+GAME_HEIGHT = 50  # sets number of cells in column
+GAME_WIDTH = 50  # sets number of cells in a row
 
 
 class CustomButton(object):
@@ -23,7 +36,8 @@ class CustomButton(object):
         self.neighbors = neighbors
         self.Gameboard = Gameboard
         # setup button
-        self.button = Button(master=self.Gameboard.FrameGrid, width=2, height=1,
+        self.pixel = PhotoImage(width=1, height=1)
+        self.button = Button(master=self.Gameboard.FrameGrid, image=self.pixel, width=10, height=10,
                              bg="black",
                              command=self.Buttonclicked)
         self.button.grid(row=row, column=col)
@@ -56,21 +70,34 @@ class Gameboard(object):
 
     def __init__(self, height, width):
         self.root = Tk()
-        self.root.geometry('600x600')  # geometry setup
+        self.frameheight = height*17+50
+        self.framewidth = width*17
+        self.root.geometry("%dx%d" %
+                           (self.framewidth, self.frameheight))  # geometry setup
+        self.root.title("Game Of Live")
+        self.root.iconphoto(False, PhotoImage(file="main\logo.png"))
         # top menu
         self.FrameTopNavigation = Frame(master=self.root)
-        self.FrameTopNavigation.place(x=0, y=0, width=600, height=50)
+        self.FrameTopNavigation.place(
+            x=0, y=0, width=self.framewidth, height=50)
         # button grid
         self.FrameGrid = Frame(master=self.root)
-        self.FrameGrid.place(x=0, y=55, width=600, height=540)
+        self.FrameGrid.place(x=0, y=55, width=self.framewidth,
+                             height=self.frameheight-50)
 
+        self.simrun = FALSE
         self.height = height
         self.width = width
         self.buttons = []
-        self.run = Button(master=self.FrameTopNavigation,
-                          width=20, height=5, bg="white", command=self.runSim,
+        self.pixel = PhotoImage(width=1, height=1)
+        self.run = Button(master=self.FrameTopNavigation, image=self.pixel, compound="c",
+                          width=self.framewidth/2, height=50, bg="#96ed6b", command=self.runSim,
                           text="run", activebackground="green")
-        self.run.place(x=0, y=0, width=250, height=50)
+        self.restart = Button(master=self.FrameTopNavigation, image=self.pixel, compound="c",
+                              width=self.framewidth/2, height=50, bg="#ff8400", command=self.restart,
+                              text="restart", activebackground="red")
+        self.run.grid(row=0, column=0)
+        self.restart.grid(row=0, column=1)
 
     def buildGrid(self):
         for i in range(self.height):
@@ -79,25 +106,30 @@ class Gameboard(object):
                 row.append(CustomButton(i, j, 0, 0, self))
             self.buttons.append(row)
 
-    def runSim(self):
-        self.run.config(state=DISABLED)  # deactivate start
-        print("run sim")
-        i = 0
-        time.sleep(TIME_BETWEEN_STEPS)
-        dirtySim(self, self.height, self.width)
-        i += 1
+    def restart(self):
+        print("Restarting...")
+        python = sys.executable
+        os.execl(python, python, * sys.argv)
 
-        # todo kill all buttons start new
-        self.run.config(state=ACTIVE)
+    def runSim(self):
+        self.run.config(state=DISABLED)
+        if not self.simrun:
+            self.simrun = TRUE
+            print("run sim")
+            t1 = threading.Thread(target=dirtySim, args=(self,
+                                                         self.height, self.width), daemon=TRUE).start()
 
 
 def dirtySim(Gb, height, width):
-    cellcount = height*width
-    for cellrow in range(height):  # check if cell should live or die
-        for cellcol in range(width):
-            countNeighbors(Gb, Gb.buttons[cellrow][cellcol], cellrow, cellcol)
-    makeStep(Gb)
-    resetallneighborcounts(Gb)
+    while TRUE:
+        cellcount = height*width
+        for cellrow in range(height):  # check if cell should live or die
+            for cellcol in range(width):
+                countNeighbors(
+                    Gb, Gb.buttons[cellrow][cellcol], cellrow, cellcol)
+        makeStep(Gb)
+        resetallneighborcounts(Gb)
+        time.sleep(TIME_BETWEEN_STEPS)
 
 
 def makeStep(Gb):
@@ -107,12 +139,9 @@ def makeStep(Gb):
             Cell = Gb.buttons[row][col]
             if(Cell.state == 0 and Cell.neighbors == REBIRTH_COUNT):  # resurect from the dead
                 Cell.beBorn()
-                print("born")
             elif(Cell.state == 1 and Cell.neighbors <= DEAD_FROM_LONELINESS):
-                print("lonly")
                 Cell.die()
             elif(Cell.state == 1 and Cell.neighbors >= DEAD_FROM_OVERPOPULATION):
-                print("overpop")
                 Cell.die()
 
 
@@ -149,9 +178,9 @@ def printoutcell(Gb):
 
 
 def main():
-    board = Gameboard(6, 6)
-    board.buildGrid()
-    board.root.mainloop()
+    game = Gameboard(GAME_HEIGHT, GAME_WIDTH)
+    game.buildGrid()
+    game.root.mainloop()
 
 
 if __name__ == '__main__':
